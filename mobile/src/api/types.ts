@@ -313,6 +313,12 @@ export interface MatchSummary {
   latest_offer: Offer | null;
 }
 
+export interface Likes {
+  role: Mode;
+  listings: ListingCardData[];
+  renters: RenterCardData[];
+}
+
 export interface SwipeResult {
   match: MatchSummary | null;
 }

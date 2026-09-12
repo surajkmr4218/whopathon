@@ -7,7 +7,7 @@ from database import get_session
 from engine import scoring
 from models import now, Listing, Match, Message, Offer, Rating, RenterProfile, Swipe, User
 from schemas import MessageIn, OfferIn, OfferRespondIn, RatingIn, SwipeIn
-from services import find_or_create_match, photos_for, public_user, to_listing_input, to_renter_input, user_rating
+from services import find_or_create_match, listing_card, photos_for, public_user, renter_card, to_listing_input, to_renter_input, user_rating
 
 router = APIRouter(tags=["social"])
 
@@ -70,6 +70,39 @@ def swipe(body: SwipeIn, me: User = Depends(get_current_user), session: Session 
     session.commit()
     match = find_or_create_match(session, l, renter_id) if body.direction == "like" else None
     return {"match": match_summary(session, match, me) if match else None}
+
+
+@router.get("/likes")
+def my_likes(me: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    """Right-swipes that have not become a match yet, so a like is never lost from view."""
+    matched = {(m.listing_id, m.renter_id) for m in session.exec(select(Match)).all()}
+    if me.mode == "seller":
+        listing = session.exec(select(Listing).where(Listing.seller_id == me.id, Listing.status != "closed").order_by(Listing.id.desc())).first()  # type: ignore[union-attr]
+        if listing is None:
+            return {"role": "seller", "listings": [], "renters": []}
+        li = to_listing_input(listing)
+        likes = session.exec(select(Swipe).where(Swipe.listing_id == listing.id, Swipe.actor == "seller", Swipe.direction == "like").order_by(Swipe.id.desc())).all()  # type: ignore[union-attr]
+        renter_likes = {s.renter_id for s in session.exec(select(Swipe).where(Swipe.listing_id == listing.id, Swipe.actor == "renter", Swipe.direction == "like")).all()}
+        cards = []
+        for sw in likes:
+            if (listing.id, sw.renter_id) in matched:
+                continue
+            u = session.get(User, sw.renter_id)
+            p = session.exec(select(RenterProfile).where(RenterProfile.user_id == sw.renter_id)).first()
+            if u and p:
+                cards.append(renter_card(session, u, p, scoring.score(to_renter_input(p, u), li), sw.renter_id in renter_likes))
+        return {"role": "seller", "listings": [], "renters": cards}
+    profile = session.exec(select(RenterProfile).where(RenterProfile.user_id == me.id)).first()
+    r = to_renter_input(profile, me) if profile else None
+    likes = session.exec(select(Swipe).where(Swipe.renter_id == me.id, Swipe.actor == "renter", Swipe.direction == "like").order_by(Swipe.id.desc())).all()  # type: ignore[union-attr]
+    cards = []
+    for sw in likes:
+        if (sw.listing_id, me.id) in matched:
+            continue
+        l = session.get(Listing, sw.listing_id)
+        if l:
+            cards.append(listing_card(session, l, scoring.score(r, to_listing_input(l)) if r else None))
+    return {"role": "renter", "listings": cards, "renters": []}
 
 
 @router.get("/matches")

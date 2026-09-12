@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -14,13 +14,11 @@ const PREF = { none: "Don't care", preferred: 'Nice to have', required: 'Must ha
 /** Shows everything the renter entered, with per-section Edit, before the swipe deck. */
 export default function ReviewPreferences() {
   const router = useRouter();
-  const { me } = useAuth();
+  const { me, token } = useAuth();
   const p = useProfile();
+  if (!token) return <Redirect href="/auth/login" />;
   if (p.isLoading) return <Loading />;
-  if (!p.data) {
-    router.replace('/onboarding/renter');
-    return null;
-  }
+  if (!p.data) return <Redirect href={p.error ? '/auth/login' : '/onboarding/renter'} />;
   const d = p.data;
   const edit = (step: number) => router.push({ pathname: '/onboarding/renter', params: { edit: '1', step: String(step), back: 'review' } });
   const Section = ({ title, step, children }: { title: string; step: number; children: React.ReactNode }) => (

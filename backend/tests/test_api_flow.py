@@ -89,6 +89,10 @@ def test_full_two_sided_flow(client):
     ids = [c["listing"]["id"] for c in client.get("/renter/discover", headers=rh).json()]
     assert passed not in ids and 1 not in ids
 
+    # A like with no answer yet is still visible under "waiting on them"
+    likes = client.get("/likes", headers=rh).json()
+    assert likes["role"] == "renter" and any(c["listing"]["id"] == 1 for c in likes["listings"])
+
     # Save is separate from like
     client.post("/renter/saved/2", headers=rh)
     assert [c["listing"]["id"] for c in client.get("/renter/saved", headers=rh).json()] == [2]
@@ -102,6 +106,8 @@ def test_full_two_sided_flow(client):
     res = client.post("/swipes", headers=sh, json={"listing_id": 1, "renter_id": card["renter"]["id"], "direction": "like"}).json()
     assert res["match"] is not None
     match_id = res["match"]["match"]["id"]
+    assert not any(c["listing"]["id"] == 1 for c in client.get("/likes", headers=rh).json()["listings"])  # matched now, no longer pending
+    assert client.get("/likes", headers=sh).json()["role"] == "seller"
     # Swiping again does not duplicate the match
     again = client.post("/swipes", headers=sh, json={"listing_id": 1, "renter_id": card["renter"]["id"], "direction": "like"}).json()
     assert again["match"]["match"]["id"] == match_id

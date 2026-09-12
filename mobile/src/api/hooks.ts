@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from './client';
 import type {
-  Dashboard, DemandReport, Listing, ListingCardData, ListingInput, MatchSummary, Message, Offer, PartialFillOption,
+  Dashboard, DemandReport, Likes, Listing, ListingCardData, ListingInput, MatchSummary, Message, Offer, PartialFillOption,
   PublicUser, Rating, RatingSummary, RenterCardData, RenterProfile, RenterProfileInput, SwipeResult, UserRatings,
 } from './types';
 
@@ -39,10 +39,13 @@ export function useSwipe() {
     mutationFn: (body: { listing_id: number; renter_id?: number; direction: 'like' | 'pass' }) =>
       api<SwipeResult>('/swipes', { method: 'POST', body }),
     onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['likes'] });
       if (res.match) qc.invalidateQueries({ queryKey: ['matches'] });
     },
   });
 }
+
+export const useLikes = () => useQuery({ queryKey: ['likes'], queryFn: () => api<Likes>('/likes') });
 
 export const useMatches = () => useQuery({ queryKey: ['matches'], queryFn: () => api<MatchSummary[]>('/matches') });
 export const useMatch = (id: number) => useQuery({ queryKey: ['match', id], queryFn: () => api<MatchSummary>(`/matches/${id}`) });
