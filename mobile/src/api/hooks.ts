@@ -45,9 +45,9 @@ export function useSwipe() {
   });
 }
 
-export const useLikes = () => useQuery({ queryKey: ['likes'], queryFn: () => api<Likes>('/likes') });
+export const useLikes = (role: 'renter' | 'seller') => useQuery({ queryKey: ['likes', role], queryFn: () => api<Likes>(`/likes?role=${role}`) });
 
-export const useMatches = () => useQuery({ queryKey: ['matches'], queryFn: () => api<MatchSummary[]>('/matches') });
+export const useMatches = (role: 'renter' | 'seller') => useQuery({ queryKey: ['matches', role], queryFn: () => api<MatchSummary[]>(`/matches?role=${role}`) });
 export const useMatch = (id: number) => useQuery({ queryKey: ['match', id], queryFn: () => api<MatchSummary>(`/matches/${id}`) });
 
 export const useMessages = (matchId: number) =>

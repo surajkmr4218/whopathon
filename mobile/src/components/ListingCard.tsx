@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
 import type { ListingCardData } from '@/api/types';
-import { DateMatchBadge, PriceDropBadge, UrgencyBadge, VerifiedBadge } from '@/components/Badges';
+import { DateMatchBadge, PriceDropBadge, UrgencyBadge, VerifiedBadge, WantsYouBadge } from '@/components/Badges';
 import { DealPill } from '@/components/DealBar';
 import { MatchScore } from '@/components/MatchScore';
 import { Stars } from '@/components/Stars';
@@ -17,6 +17,7 @@ export function ListingCard({ card }: { card: ListingCardData }) {
       <View style={styles.photoWrap}>
         <Image source={{ uri: photos[0] }} style={styles.photo} />
         <View style={styles.badges}>
+          {card.seller_liked_you ? <WantsYouBadge /> : null}
           {badges.price_drop ? <PriceDropBadge from={badges.previous_price} /> : null}
           <UrgencyBadge urgency={badges.urgency} />
         </View>

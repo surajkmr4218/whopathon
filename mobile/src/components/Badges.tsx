@@ -26,6 +26,7 @@ export const VerifiedBadge = ({ small }: { small?: boolean }) => (
 );
 
 export const LikedYouBadge = () => <Badge label="♥ Liked your place" bg={colors.accent} />;
+export const WantsYouBadge = () => <Badge label="♥ Seller wants you" bg={colors.accent} />;
 
 const styles = StyleSheet.create({
   badge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, alignSelf: 'flex-start' },

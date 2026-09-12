@@ -103,6 +103,7 @@ def discover_cards(session: Session, user: User, profile: RenterProfile) -> list
     """Core 2: renter recommendation flow."""
     r = to_renter_input(profile, user)
     skip = swiped_listing_ids(session, user.id)
+    seller_liked = {s.listing_id for s in session.exec(select(Swipe).where(Swipe.renter_id == user.id, Swipe.actor == "seller", Swipe.direction == "like")).all()}
     cards = []
     for l in active_listings(session):
         if l.seller_id == user.id or l.id in skip:
@@ -110,7 +111,7 @@ def discover_cards(session: Session, user: User, profile: RenterProfile) -> list
         s = scoring.score(r, to_listing_input(l))
         if not s.possible or s.overall < MIN_FEED_SCORE:
             continue
-        cards.append(listing_card(session, l, s))
+        cards.append({**listing_card(session, l, s), "seller_liked_you": l.id in seller_liked})
     cards.sort(key=lambda c: -c["score"].overall)
     return cards
 

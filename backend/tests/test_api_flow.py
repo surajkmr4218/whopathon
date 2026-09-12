@@ -34,6 +34,15 @@ def test_seed_and_demo_numbers(client):
     assert cards and cards[0]["score"]["overall"] >= 95
     assert all(c["listing"]["university"] == "Ohio State" for c in cards)
     assert len(client.get("/matches", headers=rh).json()) >= 1
+    assert sum(1 for c in cards if c.get("seller_liked_you")) >= 3  # sellers who already liked Riley
+    # role is explicit per tab, independent of the stored mode
+    assert client.get("/matches?role=seller", headers=rh).json() == []
+    assert client.get("/likes?role=renter", headers=rh).json()["role"] == "renter"
+    # a right swipe on a listing whose seller already liked her is an instant match
+    liked = next(c for c in cards if c.get("seller_liked_you"))
+    res = client.post("/swipes", headers=rh, json={"listing_id": liked["listing"]["id"], "direction": "like"}).json()
+    assert res["match"] is not None and res["match"]["role"] == "renter"
+    assert any(m["match"]["id"] == res["match"]["match"]["id"] for m in client.get("/matches?role=renter", headers=rh).json())
 
     h = auth(client, "seller@osu.edu")
     me = client.get("/auth/me", headers=h).json()

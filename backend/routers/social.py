@@ -73,10 +73,13 @@ def swipe(body: SwipeIn, me: User = Depends(get_current_user), session: Session 
 
 
 @router.get("/likes")
-def my_likes(me: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    """Right-swipes that have not become a match yet, so a like is never lost from view."""
+def my_likes(role: str | None = None, me: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    """Right-swipes that have not become a match yet, so a like is never lost from view.
+
+    `role` comes from the tab the user is on (renter/seller); falls back to the stored mode.
+    """
     matched = {(m.listing_id, m.renter_id) for m in session.exec(select(Match)).all()}
-    if me.mode == "seller":
+    if (role or me.mode) == "seller":
         listing = session.exec(select(Listing).where(Listing.seller_id == me.id, Listing.status != "closed").order_by(Listing.id.desc())).first()  # type: ignore[union-attr]
         if listing is None:
             return {"role": "seller", "listings": [], "renters": []}
@@ -106,8 +109,8 @@ def my_likes(me: User = Depends(get_current_user), session: Session = Depends(ge
 
 
 @router.get("/matches")
-def matches(me: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    if me.mode == "seller":
+def matches(role: str | None = None, me: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    if (role or me.mode) == "seller":
         rows = session.exec(select(Match).where(Match.seller_id == me.id, Match.status == "active").order_by(Match.id.desc())).all()  # type: ignore[union-attr]
     else:
         rows = session.exec(select(Match).where(Match.renter_id == me.id, Match.status == "active").order_by(Match.id.desc())).all()  # type: ignore[union-attr]

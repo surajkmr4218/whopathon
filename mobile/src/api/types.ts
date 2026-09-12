@@ -133,6 +133,7 @@ export interface ListingCardData {
   true_monthly_cost: number;
   badges: Badges;
   deal: DealScore | null;
+  seller_liked_you?: boolean;
 }
 
 export interface RenterBrief {

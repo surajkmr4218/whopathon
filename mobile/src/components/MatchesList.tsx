@@ -9,10 +9,10 @@ import { ErrorBox, Loading, Muted, Pill, Screen, SectionTitle } from '@/componen
 import { colors, spacing } from '@/theme';
 import { fmtRange, money, timeAgo } from '@/utils/dates';
 
-export function MatchesList({ title, accent }: { title: string; accent: string }) {
+export function MatchesList({ title, accent, role }: { title: string; accent: string; role: 'renter' | 'seller' }) {
   const router = useRouter();
-  const q = useMatches();
-  const likes = useLikes();
+  const q = useMatches(role);
+  const likes = useLikes(role);
   const pendingListings = likes.data?.listings ?? [];
   const pendingRenters = likes.data?.renters ?? [];
   const pendingCount = pendingListings.length + pendingRenters.length;

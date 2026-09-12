@@ -14,7 +14,7 @@ from sqlmodel import Session, select
 from auth import hash_password
 from models import Listing, ListingPhoto, Match, Message, Meta, Offer, Rating, RenterProfile, Swipe, User
 
-SEED_VERSION = "4"  # bump to force a re-seed on next startup
+SEED_VERSION = "5"  # bump to force a re-seed on next startup
 
 OSU, MICH, PURDUE = "Ohio State", "Michigan", "Purdue"
 
@@ -233,6 +233,10 @@ def run(session: Session, today: date | None = None) -> None:
     session.add(m2)
     session.flush()
     session.add(Message(match_id=m2.id, sender_id=sam.id, body="Hey Riley, thanks for the interest! Happy to do a video tour this week."))
+    # Sellers who already liked Riley via reverse matching -> her right swipe on these is an instant "It's a Match".
+    wants_riley = [l2, l5] + [l for l in session.exec(select(Listing)).all() if l.title in ("Studio above the coffee shop", "Furnished 1BR on Chittenden", "Compact studio, steps to High St")]
+    for l in wants_riley:
+        session.add(Swipe(listing_id=l.id, renter_id=demo_renter.id, actor="seller", direction="like"))
     # Jordan passed on Rachel's studio (proves passes persist and are excluded).
     session.add(Swipe(listing_id=l2.id, renter_id=jordan.id, actor="renter", direction="pass"))
 
