@@ -12,14 +12,32 @@ from sqlmodel import Session, select
 from auth import hash_password
 from models import Listing, ListingPhoto, Match, Message, Meta, Offer, RenterProfile, Swipe, User
 
+SEED_VERSION = "2"  # bump to force a re-seed on next startup
+
 OSU, MICH, PURDUE = "Ohio State", "Michigan", "Purdue"
 
-PHOTOS = [
+PHOTOS = [  # verified Unsplash house/apartment photos
     "photo-1522708323590-d24dbb6b0267", "photo-1502672260266-1c1ef2d93688", "photo-1484154218962-a197022b5858",
     "photo-1493809842364-78817add7ffb", "photo-1560448204-e02f11c3d0e2", "photo-1502005229762-cf1b2da7c5d6",
-    "photo-1536376072261-38c75010e6c9", "photo-1512917774080-9991f1c4c750", "photo-1515263487990-61b07b8e8b0c",
-    "photo-1567767292278-a4f21aa2d36e", "photo-1556912172-45b7abe8b7e1", "photo-1554995207-c18c203602cb",
-    "photo-1505693416388-ac5ce068fe85", "photo-1540518614846-7eded433c457", "photo-1513694203232-719a280e022f",
+    "photo-1536376072261-38c75010e6c9", "photo-1512917774080-9991f1c4c750", "photo-1567767292278-a4f21aa2d36e",
+    "photo-1556912172-45b7abe8b7e1", "photo-1554995207-c18c203602cb", "photo-1505693416388-ac5ce068fe85",
+    "photo-1540518614846-7eded433c457", "photo-1513694203232-719a280e022f", "photo-1564013799919-ab600027ffc6",
+    "photo-1570129477492-45c003edd2be", "photo-1568605114967-8130f3a36994", "photo-1580587771525-78b9dba3b914",
+    "photo-1600596542815-ffad4c1539a9", "photo-1600585154340-be6161a56a0c", "photo-1600607687939-ce8a6c25118c",
+    "photo-1600566753190-17f0baa2a6c3", "photo-1600047509807-ba8f99d2cdde", "photo-1600566753086-00f18fb6b3ea",
+    "photo-1600210492486-724fe5c67fb0", "photo-1600573472592-401b489a3cdc", "photo-1600585152220-90363fe7e115",
+    "photo-1600607687644-c7171b42498f", "photo-1598928506311-c55ded91a20c", "photo-1586023492125-27b2c045efd7",
+    "photo-1616486338812-3dadae4b4ace", "photo-1616594039964-ae9021a400a0", "photo-1615874959474-d609969a20ed",
+    "photo-1583847268964-b28dc8f51f92", "photo-1588854337115-1c67d9247e4d", "photo-1560185007-cde436f6a4d0",
+    "photo-1560185127-6ed189bf02f4", "photo-1560184897-ae75f418493e", "photo-1560185893-a55cbc8c57e8",
+    "photo-1522771739844-6a9f6d5f14af", "photo-1524758631624-e2822e304c36", "photo-1501183638710-841dd1904471",
+    "photo-1499916078039-922301b0eb9b", "photo-1505691938895-1758d7feb511", "photo-1484101403633-562f891dc89a",
+    "photo-1460317442991-0ec209397118", "photo-1545324418-cc1a3fa10c00", "photo-1502224562085-639556652f33",
+    "photo-1523217582562-09d0def993a6", "photo-1605276374104-dee2a0ed3cd6", "photo-1605146769289-440113cc3d00",
+    "photo-1592595896551-12b371d546d5", "photo-1613977257363-707ba9348227", "photo-1613490493576-7fde63acd811",
+    "photo-1512918728675-ed5a9ecdebfd", "photo-1519643381401-22c77e60520e", "photo-1493663284031-b7e3aefcae8e",
+    "photo-1556909114-f6e7ad7d3136", "photo-1556911220-bff31c812dba", "photo-1558211583-d26f610c1eb1",
+    "photo-1600121848594-d8644e57abab", "photo-1600047508788-786f3865b4b9", "photo-1600585154526-990dced4db0d",
 ]
 
 
@@ -112,6 +130,56 @@ def run(session: Session, today: date | None = None) -> None:
     l13 = listing(rachel, "Shared 2BR, own room", OSU, "Columbus", "OH", "43201", 1.0, 40, 130, 1000, 950, urgency="normal", htype="room",
                   bd=2, furn=True, park=False, rm=1, util=45, amenities=["AC", "WiFi included", "Dishwasher"], photos=(10, 13))
 
+
+    # ---- more listings so the Discover deck is deep (mostly OSU, dates overlap the demo renter) ----
+    more_sellers = [user(n, e, u, mode="seller") for n, e, u in [
+        ("Nina Kowalski", "nina@osu.edu", OSU), ("Omar Haddad", "omar@osu.edu", OSU), ("Grace Liu", "grace@osu.edu", OSU),
+        ("Ben Carter", "ben@osu.edu", OSU), ("Leah Fischer", "leah@osu.edu", OSU), ("Diego Ramos", "diego@osu.edu", OSU),
+        ("Hannah Moore", "hannah@umich.edu", MICH), ("Kai Tanaka", "kai@purdue.edu", PURDUE),
+    ]]
+    S = {u.name.split()[0]: u for u in more_sellers}
+    # (seller, title, uni, city, state, zip, dist, from, until, rent, asking, urgency, type, bd, ba, furn, park, roommates, util, pcost, fees, prev, amenities, desc)
+    MORE = [
+        (S["Nina"], "Top-floor 1BR with campus views", OSU, "Columbus", "OH", "43201", 0.5, 14, 98, 1150, 1100, "need_filled", "apartment", 1, 1, True, False, 0, 60, 0, 0, None, ["AC", "In-unit laundry", "WiFi included"], "Big windows, tons of light, 5 min walk to the Union."),
+        (S["Nina"], "Room in renovated Victorian", OSU, "Columbus", "OH", "43201", 0.8, 10, 95, 900, 850, "normal", "room", 4, 2, True, True, 3, 40, 0, 0, None, ["Porch", "Washer/Dryer", "Backyard"], "Historic house, chill housemates, huge porch."),
+        (S["Omar"], "Studio above the coffee shop", OSU, "Columbus", "OH", "43201", 0.3, 20, 90, 1000, 950, "urgent", "apartment", 0, 1, True, False, 0, 45, 0, 0, None, ["AC", "WiFi included"], "You will smell espresso every morning. Worth it."),
+        (S["Omar"], "2BR near Lane Ave garage", OSU, "Columbus", "OH", "43201", 0.9, 5, 100, 1300, 1250, "normal", "apartment", 2, 2, True, True, 1, 70, 40, 0, None, ["Gym", "AC", "Dishwasher", "In-unit laundry"], "Own room and bath in a modern 2BR. Roommate is a quiet grad student."),
+        (S["Grace"], "Sunny room in Clintonville house", OSU, "Columbus", "OH", "43202", 2.4, 12, 96, 800, 725, "need_filled", "room", 3, 1.5, False, True, 2, 40, 0, 0, 800, ["Backyard", "Washer/Dryer"], "Bike-friendly, close to the bus line. Price dropped!"),
+        (S["Grace"], "Furnished 1BR on Chittenden", OSU, "Columbus", "OH", "43201", 0.4, 18, 92, 1000, 975, "urgent", "apartment", 1, 1, True, False, 0, 55, 0, 0, None, ["AC", "WiFi included", "Balcony"], "Leaving for a co-op in Seattle. Everything stays."),
+        (S["Ben"], "Loft-style studio in Italian Village", OSU, "Columbus", "OH", "43215", 1.9, 25, 105, 1200, 1150, "normal", "apartment", 0, 1, True, True, 0, 65, 0, 50, None, ["Rooftop", "Gym", "In-unit laundry"], "Exposed brick, 12-ft ceilings, rooftop deck."),
+        (S["Ben"], "Bedroom in 5BR house on Indianola", OSU, "Columbus", "OH", "43201", 0.7, 9, 101, 750, 700, "need_filled", "room", 5, 2, False, True, 4, 35, 0, 0, None, ["Backyard", "Washer/Dryer", "WiFi included"], "Classic campus house. Cheapest room on the street."),
+        (S["Leah"], "Quiet 1BR by the river trail", OSU, "Columbus", "OH", "43212", 2.8, 15, 110, 1100, 1050, "normal", "apartment", 1, 1, True, True, 0, 60, 0, 0, None, ["AC", "Balcony", "Dishwasher"], "Run the Olentangy trail from your front door."),
+        (S["Leah"], "Shared 2BR, furnished room", OSU, "Columbus", "OH", "43201", 1.2, 20, 85, 950, 900, "need_filled", "room", 2, 1, True, False, 1, 45, 0, 0, None, ["AC", "WiFi included"], "Roommate is a nursing student, rarely home."),
+        (S["Diego"], "Modern 1BR at Gateway", OSU, "Columbus", "OH", "43201", 0.6, 10, 100, 1350, 1300, "normal", "apartment", 1, 1, True, True, 0, 75, 50, 0, None, ["Pool", "Gym", "In-unit laundry", "AC"], "Luxury building right on High St."),
+        (S["Diego"], "Basement studio, private entrance", OSU, "Columbus", "OH", "43202", 1.6, 8, 98, 850, 800, "urgent", "apartment", 0, 1, True, True, 0, 0, 0, 0, None, ["Utilities included", "WiFi included"], "All utilities included. Cool in summer."),
+        (rachel, "Room in townhouse on 4th St", OSU, "Columbus", "OH", "43201", 1.0, 22, 95, 900, 875, "normal", "room", 3, 2.5, False, True, 2, 40, 0, 0, None, ["Washer/Dryer", "Dishwasher"], "Two friendly roommates, both engineers."),
+        (sam, "Bright 2BR with balcony", OSU, "Columbus", "OH", "43201", 1.3, 12, 102, 1250, 1200, "need_filled", "apartment", 2, 1, True, False, 1, 70, 0, 0, 1275, ["Balcony", "AC", "WiFi included"], "Whole apartment; you'd share with one roommate."),
+        (dana, "Cozy attic room near Weinland Park", OSU, "Columbus", "OH", "43201", 0.9, 14, 90, 700, 650, "urgent", "room", 4, 1, True, False, 3, 30, 0, 0, None, ["WiFi included"], "Small but cheap and 10 min from campus."),
+        (chris, "1BR garden apartment", OSU, "Columbus", "OH", "43202", 1.7, 16, 100, 1000, 950, "normal", "apartment", 1, 1, False, True, 0, 55, 0, 0, None, ["Backyard", "AC"], "Ground floor with a little patio."),
+        (S["Nina"], "Studio in the Short North", OSU, "Columbus", "OH", "43215", 2.1, 20, 96, 1150, 1100, "need_filled", "apartment", 0, 1, True, False, 0, 60, 0, 75, None, ["Gym", "AC", "WiFi included"], "Galleries and restaurants downstairs."),
+        (S["Omar"], "Room with private bath, Old North", OSU, "Columbus", "OH", "43202", 1.4, 11, 99, 950, 925, "normal", "room", 3, 3, True, True, 2, 45, 0, 0, None, ["Washer/Dryer", "Backyard", "Dishwasher"], "Your own bathroom. Rare on campus."),
+        (S["Grace"], "Furnished 1BR, utilities included", OSU, "Columbus", "OH", "43201", 0.5, 9, 94, 1100, 1075, "urgent", "apartment", 1, 1, True, False, 0, 0, 0, 0, None, ["Utilities included", "AC", "In-unit laundry"], "One flat price, nothing extra."),
+        (S["Ben"], "Big room in 3BR, parking included", OSU, "Columbus", "OH", "43201", 0.8, 13, 97, 875, 825, "need_filled", "room", 3, 2, False, True, 2, 40, 0, 0, None, ["Washer/Dryer", "WiFi included"], "Driveway parking, no permit needed."),
+        (S["Leah"], "Studio near the medical center", OSU, "Columbus", "OH", "43210", 0.6, 17, 101, 1050, 1000, "normal", "apartment", 0, 1, True, True, 0, 50, 25, 0, None, ["AC", "Gym"], "Ideal for summer research at the hospital."),
+        (S["Diego"], "Townhouse room, Harrison West", OSU, "Columbus", "OH", "43215", 2.6, 19, 93, 850, 800, "normal", "room", 3, 2, True, False, 2, 40, 0, 0, None, ["Washer/Dryer", "Porch"], "Quiet street, 15 min bike to campus."),
+        (rachel, "1BR with home office nook", OSU, "Columbus", "OH", "43201", 1.1, 21, 104, 1200, 1150, "need_filled", "apartment", 1, 1, True, True, 0, 65, 0, 0, None, ["AC", "In-unit laundry", "Dishwasher"], "Perfect for a remote internship."),
+        (sam, "Room in house with backyard fire pit", OSU, "Columbus", "OH", "43202", 1.5, 10, 98, 800, 750, "urgent", "room", 4, 2, False, True, 3, 35, 0, 0, None, ["Backyard", "Washer/Dryer"], "Summer bonfires included."),
+        (dana, "Compact studio, steps to High St", OSU, "Columbus", "OH", "43201", 0.3, 15, 88, 950, 925, "normal", "apartment", 0, 1, True, False, 0, 45, 0, 0, None, ["AC", "WiFi included"], "Small, spotless, unbeatable location."),
+        (chris, "2BR with in-unit laundry, share with 1", OSU, "Columbus", "OH", "43201", 0.9, 12, 100, 1100, 1050, "need_filled", "apartment", 2, 2, True, True, 1, 60, 30, 0, None, ["In-unit laundry", "AC", "Gym"], "Roommate travels most of the summer."),
+        (S["Hannah"], "1BR near Central Campus", MICH, "Ann Arbor", "MI", "48104", 0.4, 12, 96, 1200, 1150, "need_filled", "apartment", 1, 1, True, False, 0, 55, 0, 0, None, ["AC", "WiFi included"], "Two blocks from the Diag."),
+        (S["Hannah"], "Room in co-op house", MICH, "Ann Arbor", "MI", "48104", 0.9, 10, 100, 700, 650, "normal", "room", 6, 2, True, True, 5, 0, 0, 0, None, ["Utilities included", "Backyard"], "Shared meals, great people."),
+        (jess, "Studio by the Arb", MICH, "Ann Arbor", "MI", "48104", 1.3, 18, 95, 1000, 950, "urgent", "apartment", 0, 1, True, False, 0, 50, 0, 0, None, ["AC", "Balcony"], "Trails right outside."),
+        (S["Kai"], "2BR near Ross-Ade", PURDUE, "West Lafayette", "IN", "47906", 0.7, 14, 98, 1100, 1050, "need_filled", "apartment", 2, 2, True, True, 1, 60, 0, 0, None, ["Gym", "AC", "In-unit laundry"], "Own room in a quiet 2BR."),
+        (S["Kai"], "Room in house on State St", PURDUE, "West Lafayette", "IN", "47906", 0.5, 9, 95, 650, 600, "urgent", "room", 4, 2, False, True, 3, 35, 0, 0, None, ["Washer/Dryer", "Porch"], "Cheapest room near campus."),
+        (tyler, "Furnished studio downtown", PURDUE, "West Lafayette", "IN", "47906", 1.1, 20, 100, 900, 850, "normal", "apartment", 0, 1, True, False, 0, 45, 0, 0, None, ["AC", "WiFi included"], "Walk to everything."),
+    ]
+    photo_cursor = 15
+    for (sl, title, uni, city, st, zp, dist, fr, until, rent, asking, urg, htype, bd, ba, furn, park, rm, util, pcost, fees, prev, amen, desc) in MORE:
+        listing(sl, title, uni, city, st, zp, dist, fr, until, rent, asking, urgency=urg, htype=htype, bd=bd, ba=ba, furn=furn, park=park,
+                rm=rm, util=util, pcost=pcost, fees=fees, prev=prev, amenities=amen, desc=desc,
+                photos=(photo_cursor % len(PHOTOS), (photo_cursor + 1) % len(PHOTOS), (photo_cursor + 2) % len(PHOTOS)))
+        photo_cursor += 3
+
     # ---- renters (OSU heavy; tuned for the demo numbers) ----
     alex = user("Alex Chen", "alex@osu.edu", OSU, mode="renter")
     profile(alex, "Columbus", OSU, 12, 95, 1100, flex="3d", dist=1.0, furn="preferred", park="preferred", htype="apartment")
@@ -163,6 +231,7 @@ def run(session: Session, today: date | None = None) -> None:
     session.add(Swipe(listing_id=l2.id, renter_id=jordan.id, actor="renter", direction="pass"))
 
     session.merge(Meta(key="seed_date", value=today.isoformat()))
+    session.merge(Meta(key="seed_version", value=SEED_VERSION))
     session.commit()
 
 
@@ -173,10 +242,12 @@ def ensure_seeded(keep: bool = False) -> bool:
     create_db()
     with Session(engine) as s:
         row = s.get(Meta, "seed_date")
+        ver = s.get(Meta, "seed_version")
         if row is None:
             run(s)
             return True
-        if keep or row.value == date.today().isoformat():
+        same_version = ver is not None and ver.value == SEED_VERSION
+        if same_version and (keep or row.value == date.today().isoformat()):
             return False
     drop_db()
     create_db()
