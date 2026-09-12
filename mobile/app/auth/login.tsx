@@ -6,6 +6,9 @@ import { Button, Input, Muted, Screen } from '@/components/ui';
 import { useAuth } from '@/state/auth';
 import { colors, spacing } from '@/theme';
 
+const DEMO_RENTER = 'renter@osu.edu';
+const DEMO_SELLER = 'seller@osu.edu';
+
 export default function Login() {
   const { login } = useAuth();
   const router = useRouter();
@@ -16,8 +19,9 @@ export default function Login() {
   const { demo } = useLocalSearchParams<{ demo?: string }>();
 
   useEffect(() => {
-    // Deep link `/auth/login?demo=1` logs straight into the demo account (handy for judges and simulator runs).
-    if (demo === '1') go('demo@osu.edu', 'password');
+    // Deep links: /auth/login?demo=renter or ?demo=seller (handy for judges and simulator runs).
+    if (demo === 'renter' || demo === '1') go(DEMO_RENTER, 'password');
+    if (demo === 'seller') go(DEMO_SELLER, 'password');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demo]);
 
@@ -26,8 +30,8 @@ export default function Login() {
     setError(null);
     try {
       const m = await login(e.trim(), p);
-      // Demo flow: show the entered preferences first so they can be walked through and changed.
-      if (e.trim() === 'demo@osu.edu' && m.has_renter_profile) router.replace('/onboarding/review');
+      // Demo renter: show the entered preferences first so they can be walked through and changed.
+      if (e.trim() === DEMO_RENTER && m.has_renter_profile) router.replace('/onboarding/review');
       else router.replace('/');
     } catch (err) {
       setError((err as Error).message);
@@ -46,7 +50,11 @@ export default function Login() {
       <Input label="Password" value={password} onChangeText={setPassword} secureTextEntry placeholder="••••••••" />
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Button title="Log in" onPress={() => go()} loading={busy} />
-      <Button title="Use demo account" variant="secondary" style={{ marginTop: spacing.sm }} onPress={() => { setEmail('demo@osu.edu'); setPassword('password'); go('demo@osu.edu', 'password'); }} />
+      <Text style={styles.demoLabel}>Demo accounts</Text>
+      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+        <Button title="🔎 Demo renter" variant="secondary" style={{ flex: 1 }} onPress={() => { setEmail(DEMO_RENTER); setPassword('password'); go(DEMO_RENTER, 'password'); }} />
+        <Button title="🏠 Demo seller" variant="seller" style={{ flex: 1 }} onPress={() => { setEmail(DEMO_SELLER); setPassword('password'); go(DEMO_SELLER, 'password'); }} />
+      </View>
       <Muted style={{ textAlign: 'center', marginTop: spacing.lg }}>
         New here? <Link href="/auth/signup" style={{ color: colors.accent, fontWeight: '700' }}>Create an account</Link>
       </Muted>
@@ -59,4 +67,5 @@ const styles = StyleSheet.create({
   logo: { fontSize: 42, fontWeight: '900', color: colors.accent, letterSpacing: -1 },
   tag: { fontSize: 16, color: colors.muted, marginTop: spacing.sm },
   error: { color: colors.danger, marginBottom: spacing.md },
+  demoLabel: { textAlign: 'center', color: colors.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginTop: spacing.lg, marginBottom: spacing.sm },
 });

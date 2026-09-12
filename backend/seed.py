@@ -1,6 +1,8 @@
 """Deterministic seed. All dates are relative to `today` so the demo numbers stay true.
 
-Demo login: demo@osu.edu / password (has BOTH a renter profile and the hero listing).
+Demo logins (password "password"):
+  renter@osu.edu  - Riley Cooper, renter profile tuned for ~96% top matches
+  seller@osu.edu  - Maya Thompson, owns the hero listing (urgency pricing / partial-fill demo)
 Every other seeded account also uses password "password".
 """
 from __future__ import annotations
@@ -12,7 +14,7 @@ from sqlmodel import Session, select
 from auth import hash_password
 from models import Listing, ListingPhoto, Match, Message, Meta, Offer, Rating, RenterProfile, Swipe, User
 
-SEED_VERSION = "3"  # bump to force a re-seed on next startup
+SEED_VERSION = "4"  # bump to force a re-seed on next startup
 
 OSU, MICH, PURDUE = "Ohio State", "Michigan", "Purdue"
 
@@ -91,9 +93,10 @@ def run(session: Session, today: date | None = None) -> None:
             session.add(ListingPhoto(listing_id=l.id, url=photo(idx), position=pos))
         return l
 
-    # ---- demo account: renter profile + hero listing ----
-    demo = user("Maya Thompson", "demo@osu.edu", OSU, mode="renter")
-    profile(demo, "Columbus", OSU, 20, 80, 1000, flex="3d", dist=1.5, furn="preferred", park="none")
+    # ---- demo accounts: a seller who owns the hero listing, and a renter tuned for the swipe demo ----
+    demo = user("Maya Thompson", "seller@osu.edu", OSU, mode="seller")
+    demo_renter = user("Riley Cooper", "renter@osu.edu", OSU, mode="renter")
+    profile(demo_renter, "Columbus", OSU, 20, 80, 1000, flex="3d", dist=1.5, furn="preferred", park="none")
     hero = listing(
         demo, "Sunny 1BR steps from the Oval", OSU, "Columbus", "OH", "43201", 0.4, 9, 101, 1100, 1050, urgency="urgent",
         furn=True, park=True, util=60, amenities=["In-unit laundry", "AC", "WiFi included", "Gym"], photos=(0, 3, 4),
@@ -224,18 +227,18 @@ def run(session: Session, today: date | None = None) -> None:
     session.add(Message(match_id=m1.id, sender_id=demo.id, body="Yes! One reserved spot in the back lot. When would you want to move in?"))
     session.add(Offer(match_id=m1.id, created_by=emma.id, monthly_price=1000, start_date=T(30), end_date=T(101), status="pending"))
     # Demo renter <-> Sam's Wellington listing: match with a message (renter inbox is not empty).
-    session.add(Swipe(listing_id=l4.id, renter_id=demo.id, actor="renter", direction="like"))
-    session.add(Swipe(listing_id=l4.id, renter_id=demo.id, actor="seller", direction="like"))
-    m2 = Match(listing_id=l4.id, renter_id=demo.id, seller_id=sam.id)
+    session.add(Swipe(listing_id=l4.id, renter_id=demo_renter.id, actor="renter", direction="like"))
+    session.add(Swipe(listing_id=l4.id, renter_id=demo_renter.id, actor="seller", direction="like"))
+    m2 = Match(listing_id=l4.id, renter_id=demo_renter.id, seller_id=sam.id)
     session.add(m2)
     session.flush()
-    session.add(Message(match_id=m2.id, sender_id=sam.id, body="Hey Maya, thanks for the interest! Happy to do a video tour this week."))
+    session.add(Message(match_id=m2.id, sender_id=sam.id, body="Hey Riley, thanks for the interest! Happy to do a video tour this week."))
     # Jordan passed on Rachel's studio (proves passes persist and are excluded).
     session.add(Swipe(listing_id=l2.id, renter_id=jordan.id, actor="renter", direction="pass"))
 
     # ---- five-star accountability ratings from past subleases (match_id None) ----
     everyone = session.exec(select(User)).all()
-    sellers = [u for u in everyone if u.mode == "seller"] + [demo]
+    sellers = [u for u in everyone if u.mode == "seller"]
     renters_ = [u for u in everyone if u.mode == "renter"]
     SELLER_COMMENTS = ["Super responsive and the place looked exactly like the photos.", "Handed over keys on time, no surprises.",
                        "Flexible on move-in dates, would rent from again.", "Deposit returned in full within a week.", "Honest about the roommates and utilities."]

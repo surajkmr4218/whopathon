@@ -11,14 +11,9 @@ import { fmtRange, money } from '@/utils/dates';
 
 export default function Profile() {
   const router = useRouter();
-  const { me, setMode, logout } = useAuth();
+  const { me, logout } = useAuth();
   const p = useProfile();
   const u = me?.user;
-
-  const switchToSeller = async () => {
-    const m = await setMode('seller');
-    router.replace(m.listing_id ? '/(seller)/renters' : '/onboarding/seller');
-  };
 
   return (
     <Screen>
@@ -44,11 +39,6 @@ export default function Profile() {
           </Muted>
         </Card>
       ) : null}
-      <Card style={{ borderColor: colors.seller }}>
-        <SectionTitle>Have a place to sublet?</SectionTitle>
-        <Muted style={{ marginBottom: spacing.md }}>Switch to seller mode with the same account. Your renter profile stays saved.</Muted>
-        <Button title={me?.listing_id ? 'Switch to seller mode' : 'List my place'} variant="seller" onPress={switchToSeller} />
-      </Card>
       <Button title="Log out" variant="ghost" onPress={async () => { await logout(); router.replace('/auth/login'); }} />
     </Screen>
   );

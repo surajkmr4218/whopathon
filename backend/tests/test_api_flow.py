@@ -25,16 +25,19 @@ def auth(client, email, password="password"):
 
 
 def test_seed_and_demo_numbers(client):
-    h = auth(client, "demo@osu.edu")
-    me = client.get("/auth/me", headers=h).json()
-    assert me["has_renter_profile"] and me["listing_id"] == 1
+    rh = auth(client, "renter@osu.edu")
+    me = client.get("/auth/me", headers=rh).json()
+    assert me["has_renter_profile"] and me["listing_id"] is None and me["user"]["mode"] == "renter"
 
-    # Discover: top card is a ~96% match and does not include my own listing
-    cards = client.get("/renter/discover", headers=h).json()
+    # Discover: top card is a ~96% match, all at the renter's university
+    cards = client.get("/renter/discover", headers=rh).json()
     assert cards and cards[0]["score"]["overall"] >= 95
-    assert all(c["listing"]["seller_id"] != 1 for c in cards)
-    assert all(c["listing"]["id"] != 1 for c in cards)
     assert all(c["listing"]["university"] == "Ohio State" for c in cards)
+    assert len(client.get("/matches", headers=rh).json()) >= 1
+
+    h = auth(client, "seller@osu.edu")
+    me = client.get("/auth/me", headers=h).json()
+    assert not me["has_renter_profile"] and me["listing_id"] == 1 and me["user"]["mode"] == "seller"
 
     # Reverse matching: many students already compatible; Alex already liked
     rv = client.get("/listings/1/renters", headers=h).json()
@@ -98,8 +101,7 @@ def test_full_two_sided_flow(client):
     assert [c["listing"]["id"] for c in client.get("/renter/saved", headers=rh).json()] == [2]
 
     # Seller (demo) sees the renter flagged as already-liked and swipes right -> match
-    sh = auth(client, "demo@osu.edu")
-    client.patch("/auth/me", headers=sh, json={"mode": "seller"})
+    sh = auth(client, "seller@osu.edu")
     rv = client.get("/listings/1/renters", headers=sh).json()
     card = next(c for c in rv["cards"] if c["renter"]["name"] == "Test Renter")
     assert card["already_liked_you"]
@@ -151,8 +153,9 @@ def test_full_two_sided_flow(client):
     assert deal is not None and 1 <= deal["score"] <= 10 and deal["market_per_sqft"] > 0 and deal["expected_price"] > 0
     assert client.get("/listings/1", headers=rh).json()["seller"]["rating"]["count"] >= 14
 
-    # Mode switch back keeps the same account
+    # Mode can still be switched by API (kept for new signups' choose-mode screen)
     assert client.patch("/auth/me", headers=sh, json={"mode": "renter"}).json()["user"]["mode"] == "renter"
+    client.patch("/auth/me", headers=sh, json={"mode": "seller"})
 
 
 def test_seller_onboarding_returns_compatible_count(client):

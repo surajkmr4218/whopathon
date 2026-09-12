@@ -43,18 +43,21 @@ Scan the QR code with **Expo Go** on your phone (same Wi-Fi as your Mac), or pre
 
 The app finds the backend automatically by reusing the Expo dev server's host (your Mac's LAN IP) on port 8000. To point it somewhere else, copy `.env.example` to `.env` and set `EXPO_PUBLIC_API_URL`. If your phone can't connect, check that macOS Firewall allows Python and run `ipconfig getifaddr en0` to confirm the IP.
 
-## Demo account
+## Demo accounts
 
-| Email | Password | Has |
+The login screen has a **Demo renter** and a **Demo seller** button (deep links: `/auth/login?demo=renter` / `?demo=seller`).
+
+| Email | Password | Who |
 |---|---|---|
-| `demo@osu.edu` | `password` | a renter profile **and** the hero listing (switch modes from Profile / Listing tabs) |
+| `renter@osu.edu` | `password` | Riley Cooper — renter profile tuned so the top Discover cards are 96–99% matches |
+| `seller@osu.edu` | `password` | Maya Thompson — owns the hero listing used for pricing, reverse matching and partial fill |
 
 Every other seeded account (e.g. `alex@osu.edu`, `rachel@osu.edu`) also uses `password`.
 
 ## Demo sequence (matches PRD §18)
 
-1. **Log in** with the demo account → lands on **Discover** (renter mode). Top cards are 96–97% matches. Tap a card for the match breakdown, true cost and date-gap hint. Swipe right on one.
-2. **Profile tab → Switch to seller mode**.
+1. **Demo renter** → review the entered preferences → **Discover**. Top cards are 96–99% matches with deal scores and seller stars. Tap a card for the match breakdown, deal gauge, true cost and date-gap hint. Swipe right on one; it shows under Matches → "waiting on them".
+2. Log out, tap **Demo seller**.
 3. **Renters tab** shows *"N verified students are currently looking for a place like yours"* — reverse matching over every active renter, including ones who never saw the listing. **Alex Chen** already liked it; swipe right → **It's a Match**.
 4. **Dashboard**: Rent at Risk and daily loss, urgency pricing (**$1,050 → $975**, pool 4 → 7 renters, seller must tap *Apply* or *Keep current*), Rent Recovery Score with real what-if levers, demand insights, and the Better Together card.
 5. **Partial fill**: Priya (first half) + Marcus (second half) cover **95%** of the vacancy, with estimated recovered rent computed from asking price × covered days.
@@ -65,7 +68,7 @@ Every other seeded account (e.g. `alex@osu.edu`, `rachel@osu.edu`) also uses `pa
 
 - **Five-star ratings (accountability).** Every user carries a rating as a renter and as a seller. Stars show on both swipe decks, listing detail, renter profiles and the matches list. After a match, either side can rate the other from the chat screen (one rating per match, editable). Backend: `POST /matches/{id}/rating`, `GET /users/{id}/ratings`.
 - **Deal score (is this a good deal?).** For each listing we take the median $/sqft of comparable active listings near the same campus (studios vs studios, 1BR vs 1BR, rooms vs rooms), multiply by the listing's square footage to get a market rate, and compare with the asking price. That maps to a 1–10 score and a headline ("This is a good deal") with a gauge on the listing page, a pill on the swipe card, and a "how renters see your price" section on the seller's listing tab. Logic in `backend/engine/deals.py`.
-- **Preferences review.** "Use demo account" (or the deep link `/auth/login?demo=1`) lands on a review page that shows every entered preference with per-section Edit buttons, so the input flow can be walked through before swiping.
+- **Preferences review.** The Demo renter button (or the deep link `/auth/login?demo=renter`) lands on a review page that shows every entered preference with per-section Edit buttons, so the input flow can be walked through before swiping.
 
 ## Layout
 
