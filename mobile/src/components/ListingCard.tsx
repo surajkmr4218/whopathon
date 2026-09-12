@@ -3,12 +3,14 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 
 import type { ListingCardData } from '@/api/types';
 import { DateMatchBadge, PriceDropBadge, UrgencyBadge, VerifiedBadge } from '@/components/Badges';
+import { DealPill } from '@/components/DealBar';
 import { MatchScore } from '@/components/MatchScore';
+import { Stars } from '@/components/Stars';
 import { colors, radius, spacing } from '@/theme';
 import { fmtRange, money } from '@/utils/dates';
 
 export function ListingCard({ card }: { card: ListingCardData }) {
-  const { listing: l, photos, score, badges } = card;
+  const { listing: l, photos, score, badges, seller } = card;
   const specs = [`${l.bedrooms} bd · ${l.bathrooms} ba`, l.furnished ? 'Furnished' : 'Unfurnished', l.parking ? 'Parking' : null, l.roommates ? `${l.roommates} roommate${l.roommates > 1 ? 's' : ''}` : 'No roommates'].filter(Boolean);
   return (
     <View style={styles.card}>
@@ -18,11 +20,16 @@ export function ListingCard({ card }: { card: ListingCardData }) {
           {badges.price_drop ? <PriceDropBadge from={badges.previous_price} /> : null}
           <UrgencyBadge urgency={badges.urgency} />
         </View>
+        <View style={styles.dealCorner}><DealPill deal={card.deal} light /></View>
         <View style={styles.photoFooter}>
           <View style={{ flex: 1 }}>
             <Text style={styles.price}>{money(l.asking_price)}<Text style={styles.per}>/mo</Text></Text>
             <Text style={styles.title} numberOfLines={1}>{l.title}</Text>
             <Text style={styles.addr}>{l.distance_miles} mi from {l.university} · {l.city}</Text>
+            <View style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.addr}>{seller.name.split(' ')[0]}</Text>
+              <Stars rating={seller.rating} light size={12} label="seller" />
+            </View>
           </View>
           {score ? <MatchScore score={score.overall} size="md" /> : null}
         </View>
@@ -50,6 +57,7 @@ const styles = StyleSheet.create({
   photoWrap: { flex: 1, backgroundColor: '#E5E7EB' },
   photo: { width: '100%', height: '100%' },
   badges: { position: 'absolute', top: 14, left: 14, gap: 6 },
+  dealCorner: { position: 'absolute', top: 14, right: 14 },
   photoFooter: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: spacing.lg, flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md, backgroundColor: 'rgba(20,27,45,0.72)' },
   price: { color: '#fff', fontSize: 28, fontWeight: '800' },
   per: { fontSize: 16, fontWeight: '600', color: '#E5E7EB' },

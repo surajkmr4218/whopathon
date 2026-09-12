@@ -25,8 +25,10 @@ export default function Login() {
     setBusy(true);
     setError(null);
     try {
-      await login(e.trim(), p);
-      router.replace('/');
+      const m = await login(e.trim(), p);
+      // Demo flow: show the entered preferences first so they can be walked through and changed.
+      if (e.trim() === 'demo@osu.edu' && m.has_renter_profile) router.replace('/onboarding/review');
+      else router.replace('/');
     } catch (err) {
       setError((err as Error).message);
     } finally {

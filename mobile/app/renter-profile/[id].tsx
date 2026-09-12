@@ -4,6 +4,7 @@ import { Alert, Image, StyleSheet, Text, View } from 'react-native';
 
 import { useSwipe, useUser } from '@/api/hooks';
 import { VerifiedBadge } from '@/components/Badges';
+import { Stars } from '@/components/Stars';
 import { Button, Card, ErrorBox, Loading, Muted, Row, Screen, SectionTitle, Stat } from '@/components/ui';
 import { useAuth } from '@/state/auth';
 import { colors, flexibilityLabel, spacing } from '@/theme';
@@ -32,6 +33,7 @@ export default function RenterProfileScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.name}>{u.name}</Text>
           <Muted>{u.university}{p ? ` · ${p.city}` : ''}</Muted>
+          <Stars rating={u.rating_as_renter} label="as renter" size={15} />
           {u.verified ? <View style={{ marginTop: 6 }}><VerifiedBadge /></View> : null}
         </View>
       </Row>

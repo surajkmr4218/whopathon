@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from engine import demand, partial_fill, pricing, recovery, scoring
+from engine import deals, demand, partial_fill, pricing, recovery, scoring
 from engine.scoring import ListingInput, RenterInput
 
 TODAY = date(2026, 5, 11)
@@ -160,3 +160,32 @@ def test_rent_at_risk_and_recovery_levers():
     assert "price" in keys and "partial" in keys and "dates" in keys
     price_lever = next(x for x in lv if x.key == "price")
     assert price_lever.new_count >= ev.affordable_count
+
+
+# ---- deal score (market $/sqft x square feet) ----
+def test_deal_score_uses_market_rate_per_sqft():
+    comps = [listing(id=2, asking_price=1000, square_feet=500), listing(id=3, asking_price=1200, square_feet=600), listing(id=4, asking_price=900, square_feet=450)]
+    # market = $2.00/sqft. 600 sqft => expected $1,200.
+    great = deals.score_deal(listing(id=1, asking_price=960, square_feet=600), comps)   # 20% under market
+    fair = deals.score_deal(listing(id=1, asking_price=1200, square_feet=600), comps)   # at market
+    bad = deals.score_deal(listing(id=1, asking_price=1440, square_feet=600), comps)    # 20% over
+    assert great and great.score == 10 and great.label == "Great deal" and great.expected_price == 1200 and great.diff_pct == 20
+    assert fair and fair.score == 6 and fair.label == "Good deal"
+    assert bad and bad.score == 1 and bad.label == "Above market"
+    assert great.market_per_sqft == 2.0 and great.comparables == 3
+
+
+def test_deal_score_falls_back_and_handles_missing_sqft():
+    comps = [listing(id=2, asking_price=1000, square_feet=500, housing_type="room")]
+    assert deals.score_deal(listing(id=1, asking_price=900, square_feet=0), comps) is None
+    d = deals.score_deal(listing(id=1, asking_price=900, square_feet=500), comps)
+    assert d is not None and "places near" in d.basis
+    assert deals.score_deal(listing(id=1, asking_price=900, square_feet=500), []) is None
+
+
+def test_deal_score_compares_same_size_class():
+    studios = [listing(id=2, asking_price=900, square_feet=400, bedrooms=0), listing(id=3, asking_price=1000, square_feet=420, bedrooms=0)]
+    big = [listing(id=4, asking_price=1400, square_feet=1000, bedrooms=2), listing(id=5, asking_price=1500, square_feet=1100, bedrooms=2)]
+    d = deals.score_deal(listing(id=1, asking_price=950, square_feet=410, bedrooms=0), studios + big)
+    assert d is not None and d.comparables == 2 and d.basis.startswith("studios")
+    assert 4 <= d.score <= 7  # at market for studios, not "above market" vs cheap-per-sqft 2BRs

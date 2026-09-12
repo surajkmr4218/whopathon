@@ -28,7 +28,7 @@ export default function SellerOnboarding() {
     title: '', address: '', city: CITY_FOR[uni] ?? '', state: STATE_FOR[uni] ?? '', zip: '', university: uni, distance_miles: 0.8,
     housing_type: 'apartment', bedrooms: 1, bathrooms: 1, furnished: true, parking: false, roommates: 0, amenities: ['WiFi included'], description: '',
     available_from: DATE_PRESETS[0].from, available_until: DATE_PRESETS[0].until, monthly_rent: 1100, asking_price: 1050,
-    utilities_cost: 50, parking_cost: 0, required_fees: 0, urgency: 'need_filled', accepts_partial: false,
+    utilities_cost: 50, parking_cost: 0, required_fees: 0, urgency: 'need_filled', accepts_partial: false, square_feet: 650,
   });
   const set = <K extends keyof ListingInput>(k: K, v: ListingInput[K]) => setF((s) => ({ ...s, [k]: v }));
   const num = (v: string) => Number(v.replace(/[^\d.]/g, '')) || 0;
@@ -89,6 +89,8 @@ export default function SellerOnboarding() {
           <Row><View style={{ flex: 1 }}><Input label="Bedrooms" value={String(f.bedrooms)} onChangeText={(v) => set('bedrooms', num(v))} keyboardType="number-pad" /></View>
             <View style={{ flex: 1 }}><Input label="Bathrooms" value={String(f.bathrooms)} onChangeText={(v) => set('bathrooms', num(v))} keyboardType="decimal-pad" /></View>
             <View style={{ flex: 1 }}><Input label="Roommates" value={String(f.roommates)} onChangeText={(v) => set('roommates', num(v))} keyboardType="number-pad" /></View></Row>
+          <Input label="Square feet (whole unit, or your room if subletting a room)" value={String(f.square_feet)} onChangeText={(v) => set('square_feet', num(v))} keyboardType="number-pad"
+            hint="Used to compare your $/sqft with similar places nearby so renters see if it's a good deal." />
           <Row style={{ marginBottom: 12 }}>
             <Chip label={f.furnished ? '✓ Furnished' : 'Furnished'} selected={f.furnished} onPress={() => set('furnished', !f.furnished)} color={colors.seller} />
             <Chip label={f.parking ? '✓ Parking' : 'Parking'} selected={f.parking} onPress={() => set('parking', !f.parking)} color={colors.seller} />

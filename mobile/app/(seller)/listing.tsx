@@ -6,6 +6,7 @@ import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useMyListings, useUpdateListing, useUploadPhoto } from '@/api/hooks';
 import type { Urgency } from '@/api/types';
 import { UrgencyBadge } from '@/components/Badges';
+import { DealBar } from '@/components/DealBar';
 import { Button, Card, Chip, ChipRow, Input, Loading, Muted, Row, Screen, SectionTitle } from '@/components/ui';
 import { useAuth } from '@/state/auth';
 import { colors, spacing, urgencyLabel } from '@/theme';
@@ -71,6 +72,8 @@ export default function MyListing() {
         <Button title="Save changes" variant="seller" disabled={!dirty} loading={update.isPending}
           onPress={() => update.mutate({ asking_price: Number(price), urgency, accepts_partial: partial })} />
       </Card>
+      <SectionTitle>How renters see your price</SectionTitle>
+      <DealBar deal={card.deal} />
       <Card>
         <SectionTitle>Details</SectionTitle>
         <Muted>{l.housing_type} · {l.bedrooms} bd · {l.bathrooms} ba · {l.furnished ? 'furnished' : 'unfurnished'} · {l.parking ? 'parking' : 'no parking'} · {l.roommates} roommates</Muted>

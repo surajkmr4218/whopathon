@@ -69,6 +69,7 @@ class ListingIn(BaseModel):
     required_fees: int = 0
     urgency: str = "normal"
     accepts_partial: bool = False
+    square_feet: int = Field(default=0, ge=0)
 
     @model_validator(mode="after")
     def check_dates(self):
@@ -92,6 +93,12 @@ class ListingUpdate(BaseModel):
     utilities_cost: int | None = None
     parking_cost: int | None = None
     required_fees: int | None = None
+    square_feet: int | None = None
+
+
+class RatingIn(BaseModel):
+    stars: int = Field(ge=1, le=5)
+    comment: str = ""
 
 
 class ApplyPriceIn(BaseModel):

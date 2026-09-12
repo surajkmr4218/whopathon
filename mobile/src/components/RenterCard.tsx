@@ -4,6 +4,7 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 import type { RenterCardData } from '@/api/types';
 import { DateMatchBadge, LikedYouBadge, VerifiedBadge } from '@/components/Badges';
 import { MatchScore } from '@/components/MatchScore';
+import { Stars } from '@/components/Stars';
 import { colors, flexibilityLabel, radius, spacing } from '@/theme';
 import { daysBetween, fmtRange, money } from '@/utils/dates';
 
@@ -23,6 +24,7 @@ export function RenterCard({ card }: { card: RenterCardData }) {
         <View style={{ flex: 1 }}>
           <Text style={styles.name}>{renter.name}</Text>
           <Text style={styles.uni}>{renter.university} · {p.city}</Text>
+          <View style={{ marginTop: 2 }}><Stars rating={renter.rating} label="as renter" /></View>
           <View style={{ marginTop: 6, flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
             {renter.verified ? <VerifiedBadge small /> : null}
             {card.already_liked_you ? <LikedYouBadge /> : null}

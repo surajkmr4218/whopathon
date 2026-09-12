@@ -10,9 +10,9 @@ from datetime import date, timedelta
 from sqlmodel import Session, select
 
 from auth import hash_password
-from models import Listing, ListingPhoto, Match, Message, Meta, Offer, RenterProfile, Swipe, User
+from models import Listing, ListingPhoto, Match, Message, Meta, Offer, Rating, RenterProfile, Swipe, User
 
-SEED_VERSION = "2"  # bump to force a re-seed on next startup
+SEED_VERSION = "3"  # bump to force a re-seed on next startup
 
 OSU, MICH, PURDUE = "Ohio State", "Michigan", "Purdue"
 
@@ -76,8 +76,11 @@ def run(session: Session, today: date | None = None) -> None:
     def listing(seller: User, title: str, uni: str, city: str, state: str, zip_: str, dist: float, fr: int, until: int, rent: int,
                 asking: int, urgency: str = "normal", htype: str = "apartment", bd: int = 1, ba: float = 1, furn: bool = True,
                 park: bool = False, rm: int = 0, util: int = 50, pcost: int = 0, fees: int = 0, prev: int | None = None,
-                amenities: list[str] | None = None, photos: tuple[int, ...] = (0, 1), desc: str = "", partial: bool = False) -> Listing:
-        l = Listing(seller_id=seller.id, title=title, address=f"{100 + seller.id * 7} College Ave", city=city, state=state, zip=zip_,
+                amenities: list[str] | None = None, photos: tuple[int, ...] = (0, 1), desc: str = "", partial: bool = False, sqft: int | None = None) -> Listing:
+        if sqft is None:  # deterministic, plausible size by type
+            jitter = (len(title) * 13 + seller.id * 7) % 60
+            sqft = {"room": 140, "house": 220 * max(bd, 1)}.get(htype, 380 if bd == 0 else 560 + 190 * (bd - 1)) + jitter
+        l = Listing(seller_id=seller.id, title=title, square_feet=sqft, address=f"{100 + seller.id * 7} College Ave", city=city, state=state, zip=zip_,
                     university=uni, distance_miles=dist, housing_type=htype, bedrooms=bd, bathrooms=ba, furnished=furn, parking=park,
                     roommates=rm, amenities=amenities or ["WiFi included", "AC"], description=desc, available_from=T(fr), available_until=T(until),
                     monthly_rent=rent, asking_price=asking, previous_price=prev, utilities_cost=util, parking_cost=pcost, required_fees=fees,
@@ -94,7 +97,7 @@ def run(session: Session, today: date | None = None) -> None:
     hero = listing(
         demo, "Sunny 1BR steps from the Oval", OSU, "Columbus", "OH", "43201", 0.4, 9, 101, 1100, 1050, urgency="urgent",
         furn=True, park=True, util=60, amenities=["In-unit laundry", "AC", "WiFi included", "Gym"], photos=(0, 3, 4),
-        desc="Bright one-bedroom two blocks from campus. Leaving for a summer internship and need to cover my lease.",
+        desc="Bright one-bedroom two blocks from campus. Leaving for a summer internship and need to cover my lease.", sqft=720,
     )
 
     # ---- other sellers + listings ----
@@ -229,6 +232,34 @@ def run(session: Session, today: date | None = None) -> None:
     session.add(Message(match_id=m2.id, sender_id=sam.id, body="Hey Maya, thanks for the interest! Happy to do a video tour this week."))
     # Jordan passed on Rachel's studio (proves passes persist and are excluded).
     session.add(Swipe(listing_id=l2.id, renter_id=jordan.id, actor="renter", direction="pass"))
+
+    # ---- five-star accountability ratings from past subleases (match_id None) ----
+    everyone = session.exec(select(User)).all()
+    sellers = [u for u in everyone if u.mode == "seller"] + [demo]
+    renters_ = [u for u in everyone if u.mode == "renter"]
+    SELLER_COMMENTS = ["Super responsive and the place looked exactly like the photos.", "Handed over keys on time, no surprises.",
+                       "Flexible on move-in dates, would rent from again.", "Deposit returned in full within a week.", "Honest about the roommates and utilities."]
+    RENTER_COMMENTS = ["Left the place spotless.", "Paid on time every month.", "Great communication the whole summer.",
+                       "Respectful of the roommates and the house rules.", "Would happily sublease to them again."]
+    for i, u in enumerate(sellers):
+        n = 3 + (i * 5) % 10  # 3..12 reviews
+        for k in range(n):
+            rater = renters_[(i * 3 + k) % len(renters_)]
+            if rater.id == u.id:
+                continue
+            stars = 5 if (i + k) % 4 else (4 if k % 3 else 3)
+            session.add(Rating(rater_id=rater.id, ratee_id=u.id, role="seller", stars=stars, comment=SELLER_COMMENTS[(i + k) % len(SELLER_COMMENTS)]))
+    for i, u in enumerate(renters_):
+        n = 2 + (i * 7) % 9  # 2..10 reviews
+        for k in range(n):
+            rater = sellers[(i + k) % len(sellers)]
+            if rater.id == u.id:
+                continue
+            stars = 5 if (i + 2 * k) % 5 else (4 if k % 2 else 3)
+            session.add(Rating(rater_id=rater.id, ratee_id=u.id, role="renter", stars=stars, comment=RENTER_COMMENTS[(i + k) % len(RENTER_COMMENTS)]))
+    # Maya (demo) is a top-rated seller
+    for k in range(14):
+        session.add(Rating(rater_id=renters_[k % len(renters_)].id, ratee_id=demo.id, role="seller", stars=5 if k != 6 else 4, comment=SELLER_COMMENTS[k % len(SELLER_COMMENTS)]))
 
     session.merge(Meta(key="seed_date", value=today.isoformat()))
     session.merge(Meta(key="seed_version", value=SEED_VERSION))

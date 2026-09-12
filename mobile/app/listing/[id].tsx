@@ -4,6 +4,8 @@ import { Alert, Dimensions, Image, ScrollView, StyleSheet, Text, View } from 're
 
 import { useListing, useSwipe } from '@/api/hooks';
 import { DateMatchBadge, PriceDropBadge, UrgencyBadge, VerifiedBadge } from '@/components/Badges';
+import { DealBar } from '@/components/DealBar';
+import { Stars } from '@/components/Stars';
 import { MatchBreakdown, MatchScore } from '@/components/MatchScore';
 import { TrueCostCard } from '@/components/SellerCards';
 import { Button, Card, ErrorBox, Loading, Muted, Row, Screen, SectionTitle } from '@/components/ui';
@@ -54,6 +56,7 @@ export default function ListingDetail() {
             {score ? <MatchScore score={score.overall} size="lg" /> : null}
           </Row>
           {l.description ? <Text style={styles.desc}>{l.description}</Text> : null}
+          <DealBar deal={q.data.deal} />
 
           <Card style={{ marginTop: spacing.lg }}>
             <SectionTitle right={score ? <DateMatchBadge pct={score.date} /> : undefined}>Available dates</SectionTitle>
@@ -79,7 +82,7 @@ export default function ListingDetail() {
 
           <Card>
             <SectionTitle>The place</SectionTitle>
-            <Muted>{l.housing_type} · {l.bedrooms} bd · {l.bathrooms} ba · {l.furnished ? 'Furnished' : 'Unfurnished'} · {l.parking ? 'Parking' : 'No parking'} · {l.roommates ? `${l.roommates} roommate${l.roommates > 1 ? 's' : ''}` : 'No roommates'}</Muted>
+            <Muted>{l.housing_type}{l.square_feet ? ` · ${l.square_feet} sqft` : ''} · {l.bedrooms} bd · {l.bathrooms} ba · {l.furnished ? 'Furnished' : 'Unfurnished'} · {l.parking ? 'Parking' : 'No parking'} · {l.roommates ? `${l.roommates} roommate${l.roommates > 1 ? 's' : ''}` : 'No roommates'}</Muted>
             <Row style={{ flexWrap: 'wrap', marginTop: spacing.sm }}>
               {l.amenities.map((a) => <View key={a} style={styles.chip}><Text style={styles.chipText}>{a}</Text></View>)}
             </Row>
@@ -91,6 +94,7 @@ export default function ListingDetail() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.sellerName}>{seller.name}</Text>
                 <Muted>{seller.university}</Muted>
+                <Stars rating={seller.rating} label="as seller" />
                 {seller.verified ? <View style={{ marginTop: 4 }}><VerifiedBadge small /></View> : null}
               </View>
             </Row>

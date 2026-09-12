@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
   Dashboard, DemandReport, Listing, ListingCardData, ListingInput, MatchSummary, Message, Offer, PartialFillOption,
-  PublicUser, RenterCardData, RenterProfile, RenterProfileInput, SwipeResult,
+  PublicUser, Rating, RatingSummary, RenterCardData, RenterProfile, RenterProfileInput, SwipeResult, UserRatings,
 } from './types';
 
 // ---- renter ----
@@ -87,6 +87,16 @@ export function useRespondOffer(matchId: number) {
     },
   });
 }
+
+export function useRateMatch(matchId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { stars: number; comment: string }) => api<{ rating: Rating; summary: RatingSummary }>(`/matches/${matchId}/rating`, { method: 'POST', body }),
+    onSuccess: () => qc.invalidateQueries(),
+  });
+}
+
+export const useUserRatings = (id: number) => useQuery({ queryKey: ['userRatings', id], queryFn: () => api<UserRatings>(`/users/${id}/ratings`) });
 
 export const useUser = (id: number) => useQuery({ queryKey: ['user', id], queryFn: () => api<PublicUser>(`/users/${id}`) });
 

@@ -5,9 +5,9 @@ from sqlmodel import Session, select
 from auth import get_current_user
 from database import get_session
 from engine import scoring
-from models import now, Listing, Match, Message, Offer, RenterProfile, Swipe, User
-from schemas import MessageIn, OfferIn, OfferRespondIn, SwipeIn
-from services import find_or_create_match, photos_for, public_user, to_listing_input, to_renter_input
+from models import now, Listing, Match, Message, Offer, Rating, RenterProfile, Swipe, User
+from schemas import MessageIn, OfferIn, OfferRespondIn, RatingIn, SwipeIn
+from services import find_or_create_match, photos_for, public_user, to_listing_input, to_renter_input, user_rating
 
 router = APIRouter(tags=["social"])
 
@@ -21,6 +21,9 @@ def match_summary(session: Session, m: Match, me: User) -> dict:
     last = session.exec(select(Message).where(Message.match_id == m.id).order_by(Message.id.desc())).first()  # type: ignore[union-attr]
     unread = len(session.exec(select(Message).where(Message.match_id == m.id, Message.sender_id != me.id, Message.read_at == None)).all())  # noqa: E711
     latest_offer = session.exec(select(Offer).where(Offer.match_id == m.id).order_by(Offer.id.desc())).first()  # type: ignore[union-attr]
+    other = seller if m.renter_id == me.id else renter
+    other_role = "seller" if m.renter_id == me.id else "renter"
+    my_rating = session.exec(select(Rating).where(Rating.match_id == m.id, Rating.rater_id == me.id)).first()
     return {
         "match": m,
         "role": "renter" if m.renter_id == me.id else "seller",
@@ -28,7 +31,8 @@ def match_summary(session: Session, m: Match, me: User) -> dict:
         "photos": photos_for(session, l.id),
         "renter": {**public_user(renter), "profile": profile},
         "seller": public_user(seller),
-        "other_user": public_user(seller if m.renter_id == me.id else renter),
+        "other_user": {**public_user(other), "rating": user_rating(session, other.id, other_role)},
+        "my_rating": my_rating,
         "score": score,
         "last_message": last,
         "unread": unread,
@@ -167,10 +171,40 @@ def respond_offer(offer_id: int, body: OfferRespondIn, me: User = Depends(get_cu
     raise HTTPException(400, "action must be accept, reject or counter")
 
 
+@router.post("/matches/{match_id}/rating")
+def rate_match(match_id: int, body: RatingIn, me: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    """Five-star accountability rating for the other side of a match (one per match per rater; re-rating overwrites)."""
+    m = get_match(session, me, match_id)
+    ratee_id = m.seller_id if me.id == m.renter_id else m.renter_id
+    role = "seller" if me.id == m.renter_id else "renter"
+    r = session.exec(select(Rating).where(Rating.match_id == m.id, Rating.rater_id == me.id)).first()
+    if r is None:
+        r = Rating(match_id=m.id, rater_id=me.id, ratee_id=ratee_id, role=role, stars=body.stars, comment=body.comment.strip())
+    else:
+        r.stars, r.comment = body.stars, body.comment.strip()
+    session.add(r)
+    session.commit()
+    session.refresh(r)
+    return {"rating": r, "summary": user_rating(session, ratee_id, role)}
+
+
+@router.get("/users/{user_id}/ratings")
+def user_ratings(user_id: int, me: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    rows = session.exec(select(Rating).where(Rating.ratee_id == user_id).order_by(Rating.id.desc())).all()  # type: ignore[union-attr]
+    users = {u.id: u for u in session.exec(select(User)).all()}
+    return {
+        "summary": user_rating(session, user_id),
+        "as_seller": user_rating(session, user_id, "seller"),
+        "as_renter": user_rating(session, user_id, "renter"),
+        "reviews": [{**r.model_dump(), "rater_name": users[r.rater_id].name if r.rater_id in users else "Student"} for r in rows],
+    }
+
+
 @router.get("/users/{user_id}")
 def user_detail(user_id: int, me: User = Depends(get_current_user), session: Session = Depends(get_session)):
     u = session.get(User, user_id)
     if u is None:
         raise HTTPException(404, "User not found")
     profile = session.exec(select(RenterProfile).where(RenterProfile.user_id == u.id)).first()
-    return {**public_user(u), "profile": profile}
+    return {**public_user(u), "profile": profile, "rating": user_rating(session, u.id),
+            "rating_as_renter": user_rating(session, u.id, "renter"), "rating_as_seller": user_rating(session, u.id, "seller")}

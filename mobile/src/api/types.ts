@@ -5,6 +5,11 @@ export type HousingType = 'any' | 'room' | 'apartment' | 'house';
 export type Urgency = 'normal' | 'need_filled' | 'urgent';
 export type Level = 'VERY HIGH' | 'HIGH' | 'MEDIUM' | 'LOW';
 
+export interface RatingSummary {
+  avg: number | null;
+  count: number;
+}
+
 export interface User {
   id: number;
   name: string;
@@ -72,6 +77,7 @@ export interface Listing {
   required_fees: number;
   urgency: Urgency;
   accepts_partial: boolean;
+  square_feet: number;
   status: 'draft' | 'active' | 'matched' | 'closed';
 }
 
@@ -97,6 +103,19 @@ export interface SellerBrief {
   verified: boolean;
   photo_url: string | null;
   university: string;
+  rating: RatingSummary;
+}
+
+export interface DealScore {
+  score: number;
+  label: string;
+  asking_per_sqft: number;
+  market_per_sqft: number;
+  expected_price: number;
+  diff_pct: number;
+  comparables: number;
+  square_feet: number;
+  basis: string;
 }
 
 export interface Badges {
@@ -113,6 +132,7 @@ export interface ListingCardData {
   score: MatchScore | null;
   true_monthly_cost: number;
   badges: Badges;
+  deal: DealScore | null;
 }
 
 export interface RenterBrief {
@@ -121,6 +141,7 @@ export interface RenterBrief {
   university: string;
   verified: boolean;
   photo_url: string | null;
+  rating: RatingSummary;
 }
 
 export interface RenterCardData {
@@ -259,6 +280,24 @@ export interface Offer {
   created_at: string;
 }
 
+export interface Rating {
+  id: number;
+  match_id: number | null;
+  rater_id: number;
+  ratee_id: number;
+  role: Mode;
+  stars: number;
+  comment: string;
+  created_at: string;
+}
+
+export interface UserRatings {
+  summary: RatingSummary;
+  as_seller: RatingSummary;
+  as_renter: RatingSummary;
+  reviews: (Rating & { rater_name: string })[];
+}
+
 export interface MatchSummary {
   match: Match;
   role: Mode;
@@ -266,7 +305,8 @@ export interface MatchSummary {
   photos: string[];
   renter: User & { profile: RenterProfile | null };
   seller: User;
-  other_user: User;
+  other_user: User & { rating: RatingSummary };
+  my_rating: Rating | null;
   score: MatchScore | null;
   last_message: Message | null;
   unread: number;
@@ -279,4 +319,7 @@ export interface SwipeResult {
 
 export interface PublicUser extends User {
   profile: RenterProfile | null;
+  rating: RatingSummary;
+  rating_as_renter: RatingSummary;
+  rating_as_seller: RatingSummary;
 }

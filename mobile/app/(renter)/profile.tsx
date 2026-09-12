@@ -33,7 +33,7 @@ export default function Profile() {
       </Row>
       {p.data ? (
         <Card>
-          <SectionTitle right={<Button title="Edit" small variant="secondary" onPress={() => router.push({ pathname: '/onboarding/renter', params: { edit: '1' } })} />}>Looking for</SectionTitle>
+          <SectionTitle right={<Button title="Edit" small variant="secondary" onPress={() => router.push('/onboarding/review')} />}>Looking for</SectionTitle>
           <Row between><Stat label="Dates" value={fmtRange(p.data.move_in, p.data.move_out)} sub={flexibilityLabel[p.data.flexibility]} /></Row>
           <Row between style={{ marginTop: spacing.md }}>
             <Stat label="Budget" value={`${money(p.data.max_budget)}/mo`} />

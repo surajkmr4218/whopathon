@@ -5,14 +5,25 @@ from datetime import date, timedelta
 
 from sqlmodel import Session, select
 
-from engine import demand, partial_fill, pricing, recovery, scoring
+from engine import deals, demand, partial_fill, pricing, recovery, scoring
 from engine.scoring import COMPATIBLE_THRESHOLD, MIN_FEED_SCORE, ListingInput, MatchScore, RenterInput
-from models import now, Listing, ListingPhoto, Match, Offer, RenterProfile, Swipe, User
+from models import now, Listing, ListingPhoto, Match, Offer, Rating, RenterProfile, Swipe, User
 
 
 def public_user(u: User) -> dict:
     return {"id": u.id, "name": u.name, "email": u.email, "university": u.university, "photo_url": u.photo_url,
             "verified": u.verified, "mode": u.mode}
+
+
+def user_rating(session: Session, user_id: int, role: str | None = None) -> dict:
+    """Average stars + count for a user (optionally only as renter or as seller)."""
+    q = select(Rating).where(Rating.ratee_id == user_id)
+    if role:
+        q = q.where(Rating.role == role)
+    rows = session.exec(q).all()
+    if not rows:
+        return {"avg": None, "count": 0}
+    return {"avg": round(sum(r.stars for r in rows) / len(rows), 1), "count": len(rows)}
 
 
 def to_renter_input(p: RenterProfile, u: User) -> RenterInput:
@@ -29,7 +40,7 @@ def to_listing_input(l: Listing, photo_count: int = 0) -> ListingInput:
         asking_price=l.asking_price, monthly_rent=l.monthly_rent, distance_miles=l.distance_miles, furnished=l.furnished,
         parking=l.parking, housing_type=l.housing_type, roommates=l.roommates, urgency=l.urgency,
         accepts_partial=l.accepts_partial, photo_count=photo_count, amenity_count=len(l.amenities or []),
-        utilities_cost=l.utilities_cost, parking_cost=l.parking_cost, required_fees=l.required_fees,
+        utilities_cost=l.utilities_cost, parking_cost=l.parking_cost, required_fees=l.required_fees, square_feet=l.square_feet, bedrooms=l.bedrooms,
     )
 
 
@@ -64,16 +75,23 @@ def badges_for(l: Listing, seller: User) -> dict:
     }
 
 
+def deal_for(session: Session, l: Listing):
+    others = [to_listing_input(x) for x in active_listings(session) if x.id != l.id]
+    return deals.score_deal(to_listing_input(l), others)
+
+
 def listing_card(session: Session, l: Listing, score: MatchScore | None) -> dict:
     seller = session.get(User, l.seller_id)
     li = to_listing_input(l)
     return {
         "listing": l,
         "photos": photos_for(session, l.id),
-        "seller": {"id": seller.id, "name": seller.name, "verified": seller.verified, "photo_url": seller.photo_url, "university": seller.university},
+        "seller": {"id": seller.id, "name": seller.name, "verified": seller.verified, "photo_url": seller.photo_url, "university": seller.university,
+                   "rating": user_rating(session, seller.id, "seller")},
         "score": score,
         "true_monthly_cost": scoring.true_monthly_cost(li),
         "badges": badges_for(l, seller),
+        "deal": deal_for(session, l),
     }
 
 
@@ -97,9 +115,10 @@ def discover_cards(session: Session, user: User, profile: RenterProfile) -> list
     return cards
 
 
-def renter_card(u: User, p: RenterProfile, s: MatchScore, already_liked_you: bool) -> dict:
+def renter_card(session: Session, u: User, p: RenterProfile, s: MatchScore, already_liked_you: bool) -> dict:
     return {
-        "renter": {"id": u.id, "name": u.name, "university": u.university, "verified": u.verified, "photo_url": u.photo_url},
+        "renter": {"id": u.id, "name": u.name, "university": u.university, "verified": u.verified, "photo_url": u.photo_url,
+                   "rating": user_rating(session, u.id, "renter")},
         "profile": p,
         "score": s,
         "already_liked_you": already_liked_you,
@@ -123,7 +142,7 @@ def reverse_match_cards(session: Session, l: Listing, include_swiped: bool = Fal
             compatible += 1
         if u.id in seller_swipes and not include_swiped:
             continue
-        cards.append(renter_card(u, p, s, u.id in renter_likes))
+        cards.append(renter_card(session, u, p, s, u.id in renter_likes))
     cards.sort(key=lambda c: -c["score"].seller_rank)
     return compatible, cards
 

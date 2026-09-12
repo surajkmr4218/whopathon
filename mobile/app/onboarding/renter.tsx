@@ -16,11 +16,11 @@ const HOUSING: HousingType[] = ['any', 'room', 'apartment', 'house'];
 
 export default function RenterOnboarding() {
   const router = useRouter();
-  const { edit } = useLocalSearchParams<{ edit?: string }>();
+  const { edit, step: stepParam, back } = useLocalSearchParams<{ edit?: string; step?: string; back?: string }>();
   const { me, setMode, refresh } = useAuth();
   const existing = useProfile();
   const save = useUpsertProfile();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(Number(stepParam ?? 0) || 0);
   const [f, setF] = useState<RenterProfileInput>({
     city: CITY_FOR[me?.user.university ?? ''] ?? '', university: me?.user.university ?? UNIVERSITIES[0], move_in: DATE_PRESETS[0].from, move_out: DATE_PRESETS[0].until,
     flexibility: '3d', max_budget: 1000, max_distance_miles: 1.5, furnished_pref: 'preferred', parking_pref: 'none', housing_type: 'any', roommates_ok: true,
@@ -41,7 +41,7 @@ export default function RenterOnboarding() {
       await save.mutateAsync(f);
       await setMode('renter');
       await refresh();
-      router.replace('/(renter)/discover');
+      router.replace(back === 'review' || !edit ? '/onboarding/review' : '/(renter)/discover');
     } catch (e) {
       Alert.alert('Could not save', (e as Error).message);
     }

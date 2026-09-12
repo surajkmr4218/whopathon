@@ -61,6 +61,12 @@ Every other seeded account (e.g. `alex@osu.edu`, `rachel@osu.edu`) also uses `pa
 6. **Demand heatmap**: month-by-month demand, budget buckets with "you are here", and preference percentages, all aggregated from live renter profiles. The same data feeds the price recommendation.
 7. Matches → chat (polls every 3s) → offers (make / accept / reject / counter).
 
+## Trust and pricing features
+
+- **Five-star ratings (accountability).** Every user carries a rating as a renter and as a seller. Stars show on both swipe decks, listing detail, renter profiles and the matches list. After a match, either side can rate the other from the chat screen (one rating per match, editable). Backend: `POST /matches/{id}/rating`, `GET /users/{id}/ratings`.
+- **Deal score (is this a good deal?).** For each listing we take the median $/sqft of comparable active listings near the same campus (studios vs studios, 1BR vs 1BR, rooms vs rooms), multiply by the listing's square footage to get a market rate, and compare with the asking price. That maps to a 1–10 score and a headline ("This is a good deal") with a gauge on the listing page, a pill on the swipe card, and a "how renters see your price" section on the seller's listing tab. Logic in `backend/engine/deals.py`.
+- **Preferences review.** "Use demo account" (or the deep link `/auth/login?demo=1`) lands on a review page that shows every entered preference with per-section Edit buttons, so the input flow can be walked through before swiping.
+
 ## Layout
 
 ```

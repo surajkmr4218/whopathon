@@ -5,6 +5,7 @@ import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useMatch, useMessages, useSendMessage } from '@/api/hooks';
+import { Stars } from '@/components/Stars';
 import { Loading, Pill } from '@/components/ui';
 import { useAuth } from '@/state/auth';
 import { colors, spacing } from '@/theme';
@@ -44,6 +45,13 @@ export default function Chat() {
             <Text style={styles.bannerSub}>{m.latest_offer ? `Latest offer ${money(m.latest_offer.monthly_price)}/mo · ${m.latest_offer.status}` : 'No offers yet — tap to make one'}</Text>
           </View>
           {m.latest_offer ? <Pill label={m.latest_offer.status} color={m.latest_offer.status === 'accepted' ? colors.success : colors.warning} /> : <Ionicons name="chevron-forward" size={18} color={colors.muted} />}
+        </Pressable>
+        <Pressable style={[styles.banner, { marginTop: 6 }]} onPress={() => router.push(`/rate/${matchId}`)}>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Stars rating={m.other_user.rating} />
+            <Text style={styles.bannerSub}>{m.my_rating ? `You rated ${m.my_rating.stars}★ · tap to update` : `Rate ${m.other_user.name.split(' ')[0]} after your sublease`}</Text>
+          </View>
+          <Ionicons name="star-outline" size={18} color={colors.warning} />
         </Pressable>
         <FlatList
           ref={list}

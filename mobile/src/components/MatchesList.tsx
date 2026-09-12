@@ -4,6 +4,7 @@ import { FlatList, Image, StyleSheet, Text, View } from 'react-native';
 
 import { useMatches } from '@/api/hooks';
 import { EmptyState } from '@/components/EmptyState';
+import { Stars } from '@/components/Stars';
 import { ErrorBox, Loading, Pill, Screen } from '@/components/ui';
 import { colors, spacing } from '@/theme';
 import { fmtRange, money, timeAgo } from '@/utils/dates';
@@ -27,7 +28,7 @@ export function MatchesList({ title, accent }: { title: string; accent: string }
               <Image source={{ uri: m.other_user.photo_url ?? undefined }} style={styles.avatar} />
               <View style={{ flex: 1 }}>
                 <View style={styles.top}>
-                  <Text style={styles.name}>{m.other_user.name}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Text style={styles.name}>{m.other_user.name}</Text><Stars rating={m.other_user.rating} size={12} /></View>
                   {m.last_message ? <Text style={styles.time}>{timeAgo(m.last_message.created_at)}</Text> : null}
                 </View>
                 <Text style={styles.listing} numberOfLines={1}>{m.listing.title} · {money(m.listing.asking_price)}/mo · {fmtRange(m.listing.available_from, m.listing.available_until)}</Text>

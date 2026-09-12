@@ -34,6 +34,8 @@ export default function RootLayout() {
             <Stack.Screen name="partial-fill/[id]" options={{ headerShown: true, title: 'Partial fill' }} />
             <Stack.Screen name="demand" options={{ headerShown: true, title: 'Demand heatmap' }} />
             <Stack.Screen name="onboarding/renter" options={{ headerShown: true, title: 'Your preferences' }} />
+            <Stack.Screen name="onboarding/review" options={{ headerShown: true, title: 'Review preferences' }} />
+            <Stack.Screen name="rate/[id]" options={{ headerShown: true, title: 'Rate', presentation: 'modal' }} />
             <Stack.Screen name="onboarding/seller" options={{ headerShown: true, title: 'List your place' }} />
           </Stack>
         </AuthProvider>

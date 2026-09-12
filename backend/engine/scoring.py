@@ -50,6 +50,8 @@ class ListingInput:
     utilities_cost: float = 0
     parking_cost: float = 0
     required_fees: float = 0
+    square_feet: int = 0
+    bedrooms: int = 1
 
 
 @dataclass

@@ -40,6 +40,7 @@ def test_seed_and_demo_numbers(client):
     rv = client.get("/listings/1/renters", headers=h).json()
     assert rv["count"] >= 8
     assert any(c["already_liked_you"] and c["renter"]["name"] == "Alex Chen" for c in rv["cards"])
+    assert all(c["renter"]["rating"]["count"] >= 0 for c in rv["cards"])
     assert not any(c["renter"]["name"] == "Emma Wilson" for c in rv["cards"])  # seller already liked Emma
 
     # Dashboard: pricing recommends a cut that grows the pool; partial-fill and demand are real
@@ -127,6 +128,22 @@ def test_full_two_sided_flow(client):
     client.post("/listings/1/apply-price", headers=sh, json={"price": d["pricing"]["suggested_price"]})
     detail = client.get("/listings/1", headers=rh).json()
     assert detail["badges"]["price_drop"] and detail["badges"]["previous_price"] == 1050
+
+    # Ratings: renter rates the seller, seller rates the renter; both show on cards
+    r1 = client.post(f"/matches/{match_id}/rating", headers=rh, json={"stars": 5, "comment": "Great landlord"}).json()
+    assert r1["summary"]["count"] >= 1
+    r2 = client.post(f"/matches/{match_id}/rating", headers=sh, json={"stars": 4}).json()
+    assert r2["rating"]["role"] == "renter" and r2["summary"]["avg"] is not None
+    assert client.get(f"/matches/{match_id}", headers=rh).json()["my_rating"]["stars"] == 5
+    # re-rating overwrites rather than duplicating
+    client.post(f"/matches/{match_id}/rating", headers=rh, json={"stars": 3})
+    revs = client.get(f"/users/1/ratings", headers=rh).json()
+    assert sum(1 for x in revs["reviews"] if x["match_id"] == match_id) == 1
+
+    # Deal score on listing cards: market $/sqft x square feet
+    deal = client.get("/listings/1", headers=rh).json()["deal"]
+    assert deal is not None and 1 <= deal["score"] <= 10 and deal["market_per_sqft"] > 0 and deal["expected_price"] > 0
+    assert client.get("/listings/1", headers=rh).json()["seller"]["rating"]["count"] >= 14
 
     # Mode switch back keeps the same account
     assert client.patch("/auth/me", headers=sh, json={"mode": "renter"}).json()["user"]["mode"] == "renter"

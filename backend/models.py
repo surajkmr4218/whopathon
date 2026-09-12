@@ -72,6 +72,7 @@ class Listing(SQLModel, table=True):
     required_fees: int = 0
     urgency: str = "normal"  # normal | need_filled | urgent
     accepts_partial: bool = False
+    square_feet: int = 0
     status: str = "active"  # draft | active | matched | closed
     created_at: datetime = Field(default_factory=now)
 
@@ -133,6 +134,20 @@ class Message(SQLModel, table=True):
     body: str
     created_at: datetime = Field(default_factory=now)
     read_at: datetime | None = None
+
+
+class Rating(SQLModel, table=True):
+    """Five-star accountability rating one user leaves for another after a sublease/match."""
+    __tablename__ = "ratings"
+    __table_args__ = (UniqueConstraint("match_id", "rater_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    match_id: int | None = Field(default=None, foreign_key="matches.id", index=True)  # None for seeded past subleases
+    rater_id: int = Field(foreign_key="users.id", index=True)
+    ratee_id: int = Field(foreign_key="users.id", index=True)
+    role: str  # role of the ratee: renter | seller
+    stars: int
+    comment: str = ""
+    created_at: datetime = Field(default_factory=now)
 
 
 class Meta(SQLModel, table=True):
