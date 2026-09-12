@@ -14,7 +14,12 @@ import { fmtRange, money } from '@/utils/dates';
 
 export default function MyListing() {
   const router = useRouter();
-  const { me, logout } = useAuth();
+  const { me, setMode, logout } = useAuth();
+
+  const switchToRenter = async () => {
+    const m = await setMode('renter');
+    router.replace(m.has_renter_profile ? '/(renter)/discover' : '/onboarding/renter');
+  };
   const q = useMyListings();
   const id = me?.listing_id ?? 0;
   const update = useUpdateListing(id);
@@ -74,6 +79,11 @@ export default function MyListing() {
         <Muted>{l.housing_type} · {l.bedrooms} bd · {l.bathrooms} ba · {l.furnished ? 'furnished' : 'unfurnished'} · {l.parking ? 'parking' : 'no parking'} · {l.roommates} roommates</Muted>
         <Muted>{l.amenities.join(' · ')}</Muted>
         <Muted>True cost to renters: {money(card.true_monthly_cost)}/mo</Muted>
+      </Card>
+      <Card style={{ borderColor: colors.accent }}>
+        <SectionTitle>Looking for a place yourself?</SectionTitle>
+        <Muted style={{ marginBottom: spacing.md }}>Switch to renter mode with the same account. Your listing stays live.</Muted>
+        <Button title={me?.has_renter_profile ? 'Switch to renter mode' : 'Find housing'} onPress={switchToRenter} />
       </Card>
       <Button title="Post another listing" variant="secondary" onPress={() => router.push('/onboarding/seller')} />
       <Button title="Log out" variant="ghost" onPress={async () => { await logout(); router.replace('/auth/login'); }} />
