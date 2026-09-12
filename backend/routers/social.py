@@ -1,0 +1,176 @@
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+
+from auth import get_current_user
+from database import get_session
+from engine import scoring
+from models import now, Listing, Match, Message, Offer, RenterProfile, Swipe, User
+from schemas import MessageIn, OfferIn, OfferRespondIn, SwipeIn
+from services import find_or_create_match, photos_for, public_user, to_listing_input, to_renter_input
+
+router = APIRouter(tags=["social"])
+
+
+def match_summary(session: Session, m: Match, me: User) -> dict:
+    l = session.get(Listing, m.listing_id)
+    renter = session.get(User, m.renter_id)
+    seller = session.get(User, m.seller_id)
+    profile = session.exec(select(RenterProfile).where(RenterProfile.user_id == m.renter_id)).first()
+    score = scoring.score(to_renter_input(profile, renter), to_listing_input(l)) if profile else None
+    last = session.exec(select(Message).where(Message.match_id == m.id).order_by(Message.id.desc())).first()  # type: ignore[union-attr]
+    unread = len(session.exec(select(Message).where(Message.match_id == m.id, Message.sender_id != me.id, Message.read_at == None)).all())  # noqa: E711
+    latest_offer = session.exec(select(Offer).where(Offer.match_id == m.id).order_by(Offer.id.desc())).first()  # type: ignore[union-attr]
+    return {
+        "match": m,
+        "role": "renter" if m.renter_id == me.id else "seller",
+        "listing": l,
+        "photos": photos_for(session, l.id),
+        "renter": {**public_user(renter), "profile": profile},
+        "seller": public_user(seller),
+        "other_user": public_user(seller if m.renter_id == me.id else renter),
+        "score": score,
+        "last_message": last,
+        "unread": unread,
+        "latest_offer": latest_offer,
+    }
+
+
+def get_match(session: Session, me: User, match_id: int) -> Match:
+    m = session.get(Match, match_id)
+    if m is None or me.id not in (m.renter_id, m.seller_id):
+        raise HTTPException(404, "Match not found")
+    return m
+
+
+@router.post("/swipes")
+def swipe(body: SwipeIn, me: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    if body.direction not in ("like", "pass"):
+        raise HTTPException(400, "direction must be like or pass")
+    l = session.get(Listing, body.listing_id)
+    if l is None:
+        raise HTTPException(404, "Listing not found")
+    if l.seller_id == me.id:
+        actor, renter_id = "seller", body.renter_id
+        if renter_id is None:
+            raise HTTPException(400, "renter_id required for seller swipes")
+    else:
+        actor, renter_id = "renter", me.id
+    existing = session.exec(select(Swipe).where(Swipe.listing_id == l.id, Swipe.renter_id == renter_id, Swipe.actor == actor)).first()
+    if existing:
+        existing.direction = body.direction
+        existing.created_at = now()
+        session.add(existing)
+    else:
+        session.add(Swipe(listing_id=l.id, renter_id=renter_id, actor=actor, direction=body.direction))
+    session.commit()
+    match = find_or_create_match(session, l, renter_id) if body.direction == "like" else None
+    return {"match": match_summary(session, match, me) if match else None}
+
+
+@router.get("/matches")
+def matches(me: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    if me.mode == "seller":
+        rows = session.exec(select(Match).where(Match.seller_id == me.id, Match.status == "active").order_by(Match.id.desc())).all()  # type: ignore[union-attr]
+    else:
+        rows = session.exec(select(Match).where(Match.renter_id == me.id, Match.status == "active").order_by(Match.id.desc())).all()  # type: ignore[union-attr]
+    return [match_summary(session, m, me) for m in rows]
+
+
+@router.get("/matches/{match_id}")
+def match_detail(match_id: int, me: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    return match_summary(session, get_match(session, me, match_id), me)
+
+
+@router.get("/matches/{match_id}/messages")
+def list_messages(match_id: int, me: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    m = get_match(session, me, match_id)
+    rows = session.exec(select(Message).where(Message.match_id == m.id).order_by(Message.id)).all()
+    changed = False
+    for msg in rows:
+        if msg.sender_id != me.id and msg.read_at is None:
+            msg.read_at = now()
+            session.add(msg)
+            changed = True
+    if changed:
+        session.commit()
+    return rows
+
+
+@router.post("/matches/{match_id}/messages")
+def send_message(match_id: int, body: MessageIn, me: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    m = get_match(session, me, match_id)
+    msg = Message(match_id=m.id, sender_id=me.id, body=body.body.strip())
+    session.add(msg)
+    session.commit()
+    session.refresh(msg)
+    return msg
+
+
+@router.get("/matches/{match_id}/offers")
+def list_offers(match_id: int, me: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    m = get_match(session, me, match_id)
+    return session.exec(select(Offer).where(Offer.match_id == m.id).order_by(Offer.id.desc())).all()  # type: ignore[union-attr]
+
+
+@router.post("/matches/{match_id}/offers")
+def create_offer(match_id: int, body: OfferIn, me: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    m = get_match(session, me, match_id)
+    if body.end_date <= body.start_date:
+        raise HTTPException(400, "end_date must be after start_date")
+    for o in session.exec(select(Offer).where(Offer.match_id == m.id, Offer.status == "pending")).all():
+        o.status = "countered"
+        session.add(o)
+    offer = Offer(match_id=m.id, created_by=me.id, **body.model_dump())
+    session.add(offer)
+    session.commit()
+    session.refresh(offer)
+    return offer
+
+
+@router.post("/offers/{offer_id}/respond")
+def respond_offer(offer_id: int, body: OfferRespondIn, me: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    offer = session.get(Offer, offer_id)
+    if offer is None:
+        raise HTTPException(404, "Offer not found")
+    m = get_match(session, me, offer.match_id)
+    if offer.created_by == me.id:
+        raise HTTPException(400, "You cannot respond to your own offer")
+    if offer.status != "pending":
+        raise HTTPException(400, "Offer is no longer pending")
+    if body.action == "accept":
+        offer.status = "accepted"
+        l = session.get(Listing, m.listing_id)
+        l.status = "matched"
+        session.add(l)
+        session.add(offer)
+        session.commit()
+        session.refresh(offer)
+        return offer
+    if body.action == "reject":
+        offer.status = "rejected"
+        session.add(offer)
+        session.commit()
+        session.refresh(offer)
+        return offer
+    if body.action == "counter":
+        if body.monthly_price is None:
+            raise HTTPException(400, "monthly_price required to counter")
+        offer.status = "countered"
+        session.add(offer)
+        counter = Offer(match_id=m.id, created_by=me.id, monthly_price=body.monthly_price,
+                        start_date=body.start_date or offer.start_date, end_date=body.end_date or offer.end_date)
+        session.add(counter)
+        session.commit()
+        session.refresh(counter)
+        return counter
+    raise HTTPException(400, "action must be accept, reject or counter")
+
+
+@router.get("/users/{user_id}")
+def user_detail(user_id: int, me: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    u = session.get(User, user_id)
+    if u is None:
+        raise HTTPException(404, "User not found")
+    profile = session.exec(select(RenterProfile).where(RenterProfile.user_id == u.id)).first()
+    return {**public_user(u), "profile": profile}
